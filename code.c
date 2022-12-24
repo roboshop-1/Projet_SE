@@ -193,6 +193,27 @@ if (process==0){
 
 int retour=execvp(arg_list[0],arg_list);
 if (retour==-1) { 
+fprintf(stderr,"%s\n",strerror(errno));
+return retour;}
+exit(1);
+return retour ;
+}
+  else
+  {
+  wait(&process);
+  }
+}
+//**********************************************/
+int executeAND ( char *cmd1 ){
+int pipefd[2];
+creation_liste_arguments(arg_list,cmd1);	
+
+pipe(pipefd);
+pid_t process=fork();
+if (process==0){
+
+int retour=execvp(arg_list[0],arg_list);
+if (retour==-1) { 
 //fprintf(stderr,"%s\n",strerror(errno));
 return retour;}
 exit(1);
@@ -224,23 +245,18 @@ void executeAsync ( char *cmd1 ){
   }
 }
 //-----------------------------
-
-//---------------------------
 void executePipe ( char *cmd1 , char *cmd2 ){
-char *fichier_redirection_sortante;
-char *fichier_redirection_sortante2;
+
  int pipefd[2];
  
  creation_liste_arguments(arg_list,cmd1);
- fichier_redirection_sortante=scan_redirection_sortante(arg_list);	
+ 	
  if (cmd2!=NULL)
 	{
-		creation_liste_arguments(arg_list2,cmd2);
-		fichier_redirection_sortante2=scan_redirection_sortante(arg_list2);
-		
+		creation_liste_arguments(arg_list2,cmd2);	
 	}
 
-pipe(pipefd);
+	pipe(pipefd);
 		//The pid_t data type is a signed integer type which is capable of representing a process ID
 	pid_t process=fork();
 	
@@ -252,6 +268,61 @@ pipe(pipefd);
 		
 			dup2(pipefd[1],STDOUT_FILENO);
 		}
+		
+		int retour=execvp(arg_list[0],arg_list);
+		if (retour==-1) fprintf(stderr,"%s\n",strerror(errno));
+		exit(0);
+	}
+	else
+	{
+		wait(&process);
+	}
+	
+	
+	if (cmd2!=NULL)
+	{
+	//The pid_t data type is a signed integer type which is capable of representing a process ID
+		pid_t process2=fork();
+		if (process2==0)
+		{
+			dup2(pipefd[0],STDIN_FILENO);
+			int retour=execvp(arg_list2[0],arg_list2);
+			if (retour==-1) fprintf(stderr,"%s\n",strerror(errno));
+			exit(0);
+		}
+		else
+		{
+			wait(&process2);
+		}
+	}
+		
+	if (cmd2!=NULL)
+	{
+		liberation_arguments(arg_list2);
+		free(cmd2);
+		cmd2=NULL;
+	}
+	liberation_arguments(arg_list);
+	free(cmd1);
+}
+//---------------------------
+
+void executeRed ( char *cmd1 ){
+char *fichier_redirection_sortante;
+char *fichier_redirection_sortante2;
+ int pipefd[2];
+ 
+ creation_liste_arguments(arg_list,cmd1);
+ fichier_redirection_sortante=scan_redirection_sortante(arg_list);	
+ 
+	pipe(pipefd);
+		//The pid_t data type is a signed integer type which is capable of representing a process ID
+	pid_t process=fork();
+	
+	// child process
+	if (process==0)
+	{
+		
 		if (fichier_redirection_sortante!=NULL)
 		{
 		
@@ -273,41 +344,7 @@ pipe(pipefd);
 	{
 		wait(&process);
 	}
-	if (cmd2!=NULL)
-	{
-	//The pid_t data type is a signed integer type which is capable of representing a process ID
-		pid_t process2=fork();
-		if (process2==0)
-		{
-			dup2(pipefd[0],STDIN_FILENO);
-			if (fichier_redirection_sortante2!=NULL)
-			{
-				char* type_redirection=strndup(fichier_redirection_sortante,1);
-				int handler=(intptr_t)freopen(fichier_redirection_sortante2+1,type_redirection, stdout);
-				if (handler==-1) 
-				{
-					fprintf(stderr,"%s\n",strerror(errno));
-					exit(0);
-				}
-				free(type_redirection);
-			}
-			int retour=execvp(arg_list2[0],arg_list2);
-			if (retour==-1) fprintf(stderr,"%s\n",strerror(errno));
-			exit(0);
-		}
-		else
-		{
-			wait(&process2);
-		}
-	}
-		
-	if (cmd2!=NULL)
-	{
-		if (fichier_redirection_sortante2!=NULL) free(fichier_redirection_sortante2);
-		liberation_arguments(arg_list2);
-		free(cmd2);
-		cmd2=NULL;
-	}
+	
 	if (fichier_redirection_sortante!=NULL) free(fichier_redirection_sortante);
 	liberation_arguments(arg_list);
 	free(cmd1);
@@ -317,8 +354,8 @@ pipe(pipefd);
 void traitement_cmd(char *commande,char **argv)
 {
 char *cmd1,*cmd2;
-int nr=0;
-char buf[500], *buffer[100];
+//int nr=0;
+//char buf[500], *buffer[100];
 char *fichier_redirection_sortante;
 char *fichier_redirection_sortante2;
 int pipefd[2];
@@ -328,6 +365,12 @@ int pipefd[2];
 	str_replace(commande," >",">");
 	str_replace(commande,"> ",">");
 	str_replace(commande,">"," > ");
+	char *tmpr=strstr(commande," > ");
+	/*------------------------------*/
+	str_replace(commande,"|| ","||");
+	str_replace(commande," ||","||");
+	str_replace(commande,"||"," || ");
+	char *tmp2=strstr(commande," || ");
 	str_replace(commande,"| ","|");
 	str_replace(commande," |","|");
 	str_replace(commande,"|"," | ");
@@ -337,48 +380,72 @@ int pipefd[2];
 	str_replace(commande," &&","&&");
 	str_replace(commande,"&&"," && ");
 	char *tmp1=strstr(commande," && ");
-	/*------------------------------*/
-	str_replace(commande,"or ","or");
-	str_replace(commande," or","or");
-	str_replace(commande,"or"," or ");
-	char *tmp2=strstr(commande," or ");
+	
+	//-------------------------------------
+	str_replace(commande,", ",",");
+	str_replace(commande," ,",",");
+	str_replace(commande,","," , ");
+	char *tmpp=strstr(commande," , ");
+	
+	// ;
+	if (tmpp!=NULL) 
+	{
+		cmd1=strndup(commande,strlen(commande)-strlen(tmpp));
+		cmd2=strdup(tmpp+3);
+		 executeAsync (cmd1)   ;
+	  	 executeAsync (cmd2)   ;
+		
+	}
+	// OR
 	if (tmp2!=NULL) {
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp2));
 		cmd2=strdup(tmp2+4);
-		
-	}
+		printf("---cmd2  %s \n",cmd2);
+		int a = executeOR (cmd1 );
+		if (a==-1) {
+		executeOR (cmd2 );
+		}
 	
-	else if (tmp1!=NULL) {
+	}
+	// AND
+	if (tmp1!=NULL) {
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp1));
 		cmd2=strdup(tmp1+4);
+		printf("------------ \n");
+	 	int a = executeAND (cmd1 );
+		if (a!=-1) {
+		a= executeAND (cmd2 );
+		}
 	}
-	
-	else if (tmp!=NULL) 
+	// PIPE 
+	if (tmp!=NULL) 
 	{
+	printf("---fi Pipe    \n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp));
 		cmd2=strdup(tmp+3);
+		 executePipe (cmd1 ,cmd2 )   ;
 		
 	}
+	//  > 
+	if (tmpr!=NULL) 
+	{
+	printf("---fi >   \n");
+		cmd1=strdup(commande);
+		executeRed (cmd1)   ;
+		
+	}
+	
+	/*
 	else
 	{
 		cmd1=strdup(commande);
 		executeAsync (cmd1 )   ;
 		
 	}
-	if (tmp1!=NULL) {
-	  executeAsync (cmd1 )   ;
-	  executeAsync (cmd2 )   ;
-	}
 	
-	if (tmp2!=NULL) {
-	int a = executeOR (cmd1 );
-	if (a==-1) {
-	executeOR (cmd2 );
-	}
-	}
-	if (tmp!=NULL) {
-	  executePipe (cmd1 ,cmd2 )   ;
-	}
+	*/
+	
+	
 }
 // elimination des espaces au debut de commande
 void traitement_espaces_debut(char *chaine_a_traiter)
@@ -453,6 +520,7 @@ void traitement_ligne(char **argv)
 	{
 		exit(EXIT_SUCCESS);
 	}
+	
 	else
 	{
 	// t5adem code w tchof keno separer bel ;
