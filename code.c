@@ -368,15 +368,16 @@ int pipefd[2];
 	str_replace(commande,">"," > ");
 	char *tmpr=strstr(commande," > ");
 	//-------------------------------------
-	str_replace(commande,"|| ","||");
-	str_replace(commande," ||","||");
-	str_replace(commande,"||"," || ");
-	char *tmp2=strstr(commande," || ");
-	//-------------------------------------
 	str_replace(commande,"| ","|");
 	str_replace(commande," |","|");
 	str_replace(commande,"|"," | ");
 	char *tmp=strstr(commande," | ");
+	//-------------------------------------
+	str_replace(commande,"|| "," |  | ");
+	str_replace(commande," ||"," |  | ");
+	str_replace(commande,"||"," |  | ");
+	str_replace(commande," |  | "," || ");
+	char *tmp2=strstr(commande," || ");
 	//-------------------------------------
 	str_replace(commande,"&& ","&&");
 	str_replace(commande," &&","&&");
@@ -387,14 +388,7 @@ int pipefd[2];
 	str_replace(commande," ;",";");
 	str_replace(commande,";"," ; ");
 	char *tmpp=strstr(commande," ; ");
-	//-------------------------------------
-	/*
-	char *tst = strstr( commande , "||");
 	
-	if ((tst!=NULL) )
-	tmp = NULL ;
-	*/
-	// ;
 	if (tmpp!=NULL) 
 	{
 		cmd1=strndup(commande,strlen(commande)-strlen(tmpp));
@@ -406,9 +400,10 @@ int pipefd[2];
 	}
 	// OR
 	if (tmp2!=NULL) {
+	tmp=NULL;
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp2));
 		cmd2=strdup(tmp2+4);
-		printf("---cmd2+%s \n",cmd2);
+		//printf("fi or---cmd2+%s \n",cmd2);
 		int a = executeOR (cmd1);
 		if (a==-1) {
 		executeOR (cmd2 );
@@ -419,7 +414,7 @@ int pipefd[2];
 	if (tmp1!=NULL) {
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp1));
 		cmd2=strdup(tmp1+4);
-		printf("------------ \n");
+		//printf("------------ \n");
 	 	int a = executeAND (cmd1 );
 		if (a!=-1) {
 		a= executeAND (cmd2 );
@@ -428,7 +423,7 @@ int pipefd[2];
 	// PIPE 
 	if (tmp!=NULL) 
 	{
-	printf("---fi Pipe    \n");
+	//printf("---fi Pipe    \n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp));
 		cmd2=strdup(tmp+3);
 		 executePipe (cmd1 ,cmd2 )   ;
@@ -437,7 +432,7 @@ int pipefd[2];
 	//  > 
 	if (tmpr!=NULL) 
 	{
-	printf("---fi >   \n");
+	printf("Operation completed successfully !\n");
 		cmd1=strdup(commande);
 		executeRed (cmd1)   ;
 		
