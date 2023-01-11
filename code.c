@@ -354,44 +354,52 @@ char *fichier_redirection_sortante2;
 void traitement_cmd(char *commande,char **argv)
 {
 char *cmd1,*cmd2;
-//int nr=0;
-//char buf[500], *buffer[100];
 char *fichier_redirection_sortante;
 char *fichier_redirection_sortante2;
 int pipefd[2];
 
 	cmd2=NULL;
+	
+	
 	str_replace(commande,"\n","");
+	//-------------------------------------
 	str_replace(commande," >",">");
 	str_replace(commande,"> ",">");
 	str_replace(commande,">"," > ");
 	char *tmpr=strstr(commande," > ");
-	/*------------------------------*/
+	//-------------------------------------
 	str_replace(commande,"|| ","||");
 	str_replace(commande," ||","||");
 	str_replace(commande,"||"," || ");
 	char *tmp2=strstr(commande," || ");
+	//-------------------------------------
 	str_replace(commande,"| ","|");
 	str_replace(commande," |","|");
 	str_replace(commande,"|"," | ");
 	char *tmp=strstr(commande," | ");
-	/*------------------------------*/
+	//-------------------------------------
 	str_replace(commande,"&& ","&&");
 	str_replace(commande," &&","&&");
 	str_replace(commande,"&&"," && ");
 	char *tmp1=strstr(commande," && ");
-	
 	//-------------------------------------
-	str_replace(commande,", ",",");
-	str_replace(commande," ,",",");
-	str_replace(commande,","," , ");
-	char *tmpp=strstr(commande," , ");
+	str_replace(commande,"; ",";");
+	str_replace(commande," ;",";");
+	str_replace(commande,";"," ; ");
+	char *tmpp=strstr(commande," ; ");
+	//-------------------------------------
+	/*
+	char *tst = strstr( commande , "||");
 	
+	if ((tst!=NULL) )
+	tmp = NULL ;
+	*/
 	// ;
 	if (tmpp!=NULL) 
 	{
 		cmd1=strndup(commande,strlen(commande)-strlen(tmpp));
 		cmd2=strdup(tmpp+3);
+		printf("---cmd2/%s \n",cmd2);
 		 executeAsync (cmd1)   ;
 	  	 executeAsync (cmd2)   ;
 		
@@ -400,8 +408,8 @@ int pipefd[2];
 	if (tmp2!=NULL) {
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp2));
 		cmd2=strdup(tmp2+4);
-		printf("---cmd2  %s \n",cmd2);
-		int a = executeOR (cmd1 );
+		printf("---cmd2+%s \n",cmd2);
+		int a = executeOR (cmd1);
 		if (a==-1) {
 		executeOR (cmd2 );
 		}
@@ -435,15 +443,13 @@ int pipefd[2];
 		
 	}
 	
-	/*
-	else
+	// simple commande
+	if ( (tmpp==NULL) && (tmp2==NULL) && (tmp1==NULL) && (tmp==NULL) && (tmpr==NULL) ) 
 	{
 		cmd1=strdup(commande);
 		executeAsync (cmd1 )   ;
 		
 	}
-	
-	*/
 	
 	
 }
@@ -525,7 +531,7 @@ void traitement_ligne(char **argv)
 	{
 	// t5adem code w tchof keno separer bel ;
 		char *cmd=strdup(buffer);
-		char *tmp=strtok(cmd,";");
+		char *tmp=strtok(cmd,",");
 		while (tmp!=NULL)
 		{
 			char *valeur_var=strstr(tmp,"=");
@@ -536,7 +542,7 @@ void traitement_ligne(char **argv)
 				free(nom_var);
 			}
 			else traitement_cmd(tmp,argv);
-			tmp=strtok(NULL,";");
+			tmp=strtok(NULL,",");
 		}
 		free(cmd);
 	}
