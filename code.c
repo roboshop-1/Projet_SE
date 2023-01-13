@@ -21,46 +21,6 @@ char *arg_list[32],*arg_list2[32];
 char buffer[250];
 int	 global_argc, histocount;
 FILE *fichier;
-// tab3a partie variable partie 16 fi site
-void ajout_environnement(char *nom_variable,char *valeur_variable)
-{
-	Environnement *liste=var_environnement;
-	
-	int test=0;
-	if (liste!=NULL)
-	{
-		while (liste->next!=NULL)
-		{
-			if (strcmp(nom_variable,liste->nom)==0)
-			{
-				free(liste->valeur);
-				liste->valeur=strdup(valeur_variable);
-				test=1;
-			}
-			liste=liste->next;
-		}
-	}
-	if (test==0)
-	{
-		Environnement *new_env=malloc(sizeof(Environnement));
-		new_env->nom=strdup(nom_variable);
-		new_env->valeur=strdup(valeur_variable);
-		new_env->next=NULL;
-		liste=var_environnement;
-		if (liste!=NULL)
-		{
-			while(liste->next!=NULL)
-			{
-				liste=liste->next;
-			}	
-			liste->next=new_env;
-		}
-		else
-		{
-			var_environnement=new_env;
-		}
-	}
-}
 
 void str_replace(char *chaine,char* recherche,char *remplace)
 {
@@ -156,33 +116,13 @@ int  increment=0;
 			}
 			arguments[increment]=NULL;
 		}
-		else if (strcmp(arguments[increment],">>")==0)
-		{
-			redirection=malloc(strlen(arguments[increment+1])+1);
-			redirection[0]='a';
-			redirection[1]='\0';
-			strcat(redirection,arguments[increment+1]);
-			free(arguments[increment]);	
-			free(arguments[increment+1]);	
-			while (arguments[increment+2]!=NULL)
-			{
-				arguments[increment]=arguments[increment+2];
-				++increment;
-			}
-			arguments[increment]=NULL;
-		}
 		++increment;
 		//printf("----------redirection--%s---\n",redirection);
 	}
 	return redirection;
 }
 //--------------------------------------------------
-void removeWhiteSpace(char* buf){
-	if(buf[strlen(buf)-1]==' ' || buf[strlen(buf)-1]=='\n')
-	buf[strlen(buf)-1]='\0';
-	if(buf[0]==' ' || buf[0]=='\n') memmove(buf, buf+1, strlen(buf));
-}
-//*********************************************/
+
 int executeOR ( char *cmd1 ){
 int pipefd[2];
 creation_liste_arguments(arg_list,cmd1);	
@@ -309,7 +249,6 @@ void executePipe ( char *cmd1 , char *cmd2 ){
 
 void executeRed ( char *cmd1 ){
 char *fichier_redirection_sortante;
-char *fichier_redirection_sortante2;
  int pipefd[2];
  
  creation_liste_arguments(arg_list,cmd1);
@@ -355,7 +294,7 @@ void traitement_cmd(char *commande,char **argv)
 {
 char *cmd1,*cmd2;
 char *fichier_redirection_sortante;
-char *fichier_redirection_sortante2;
+
 int pipefd[2];
 
 	cmd2=NULL;
@@ -448,7 +387,7 @@ int pipefd[2];
 	
 	
 }
-// elimination des espaces au debut de commande
+
 void traitement_espaces_debut(char *chaine_a_traiter)
 {
 	char *nouvelle_chaine=chaine_a_traiter;
@@ -458,7 +397,7 @@ void traitement_espaces_debut(char *chaine_a_traiter)
 	}
 	memmove(chaine_a_traiter,nouvelle_chaine,strlen(nouvelle_chaine)+1);
 }
-// elimination des espaces a la fin de commande
+
 void traitement_espaces_fin(char *chaine_a_traiter)
 {
 	while (chaine_a_traiter[strlen(chaine_a_traiter)-1]==' ')
@@ -472,8 +411,7 @@ void traitement_ligne(char **argv)
 	traitement_espaces_debut(buffer);
 	traitement_espaces_fin(buffer);
 	
-	// fonctionnement de commande cd 
-	// 
+	
 	if (strncmp(buffer,"cd",2)==0)
 	{		
 		char *chemin=strstr(buffer," ");
@@ -517,26 +455,14 @@ void traitement_ligne(char **argv)
 			}
 		}
 	}
-	else if (strncmp(buffer,"exit",4)==0)
-	{
-		exit(EXIT_SUCCESS);
-	}
-	
 	else
 	{
-	// t5adem code w tchof keno separer bel ;
+	
 		char *cmd=strdup(buffer);
 		char *tmp=strtok(cmd,",");
 		while (tmp!=NULL)
 		{
-			char *valeur_var=strstr(tmp,"=");
-			if (valeur_var!=NULL)
-			{
-				char *nom_var=strndup(tmp,strlen(tmp)-strlen(valeur_var));
-				ajout_environnement(nom_var,valeur_var+1);	
-				free(nom_var);
-			}
-			else traitement_cmd(tmp,argv);
+			traitement_cmd(tmp,argv);
 			tmp=strtok(NULL,",");
 		}
 		free(cmd);
@@ -550,37 +476,6 @@ int touche_fleche_haute()
 	rl_end_of_line(0,0);
 	return 0;
 }
-
-int touche_tab()
-{
-	char *buffer=strdup(rl_line_buffer);
-	char *buffer_reallocation=realloc(buffer,strlen(buffer)+2);
-	if (buffer_reallocation==NULL) return 0; else buffer=buffer_reallocation;
-	char *tmp=strstr(buffer," ");
-	if (tmp==NULL) tmp=buffer;
-	if (tmp[0]==' ') ++tmp;
-	strcat(tmp,"*");
-	glob_t g;
-	int retour_glob=glob(tmp,0,NULL,&g);
-	if (retour_glob==0)
-	{
-		if (g.gl_pathc==1)
-		{
-			char *new_buffer=malloc(strlen(buffer)+strlen(g.gl_pathv[0])+2);
-			new_buffer[0]='\0';
-			strncat(new_buffer,buffer,strlen(buffer)-strlen(tmp));
-			strcat(new_buffer,g.gl_pathv[0]);
-			rl_replace_line(new_buffer,0);
-			rl_end_of_line(0,0);
-			free(new_buffer);
-		}
-	}
-	globfree(&g);
-	free(buffer);
-	return 0;
-}
-
-
 // permier promt .
 char *lecture()
 {
@@ -598,17 +493,7 @@ char *lu=NULL;
 	{
 		char dossier_en_cours[4096];
 		dossier_en_cours[0]='\0';
-		if (strncmp(getenv("PWD"),getenv("HOME"),strlen(getenv("HOME")))==0)
-		{
-			char *temp_home=getenv("PWD");
-			temp_home=temp_home+strlen(getenv("HOME"));
-			strcat(dossier_en_cours,"~");
-			strcat(dossier_en_cours,temp_home);
-		}
-		else
-		{
-			strcat(dossier_en_cours,getenv("PWD"));
-		}
+		strcat(dossier_en_cours,getenv("PWD"));
 		strcat(dossier_en_cours,"% ");
 		tmp=readline(dossier_en_cours);
 	}
@@ -635,18 +520,12 @@ int main(int argc,char *argv[],char *arge[])
 	read_history(".myshel_history");
 	stifle_history(500);
 	write_history(".myshel_history");
-	 //welcomeScreen();
+	welcomeScreen();
 	int increment=0;
-	while (arge[increment]!=NULL)
-	{
-		char *valeur=strstr(arge[increment],"=");
-		char *nom=strndup(arge[increment],strlen(arge[increment])-strlen(valeur));
-		ajout_environnement(nom,valeur+1);
-		free(nom);
-		++increment;
-	}
+	
+	
 	rl_bind_keyseq("\e[A",touche_fleche_haute);
-	rl_bind_key('\t',touche_tab);
+	
 	
 	// partie batsh --> si nom de fichier invalide -> affichage de message d erreur
 	if (argc>1)
