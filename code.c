@@ -8,18 +8,9 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-typedef struct Environnement
-{
-	char *nom;
-	char *valeur;
-    struct Environnement *next;
-} Environnement ;
-
-Environnement *var_environnement=NULL;
-
 char *arg_list[32],*arg_list2[32];
 char buffer[250];
-int	 global_argc, histocount;
+int	 global_argc;
 FILE *fichier;
 
 void str_replace(char *chaine,char* recherche,char *remplace)
@@ -63,7 +54,7 @@ int  boucle,increment,longueur;
 	}
 	
 	longueur=strcspn(commande," \0");
-	//printf("----------longueur du comm--%d---\n",longueur);
+
 	arguments[0]=strndup(commande,longueur);
 	commande=commande+longueur;
 	increment=1;
@@ -79,8 +70,7 @@ int  boucle,increment,longueur;
 		if (strcmp(separateur,"\"")==0) ++commande;
 		++increment;
 	}
-	//printf("----------commande--%d---\n",*commande);
-	//printf("----------arguments--%s---\n",*arguments);
+	
 }
 
 void liberation_arguments(char *arguments[32])
@@ -92,7 +82,6 @@ int increment=0;
 		increment++;
 	}
 }
-
 
 char *scan_redirection_sortante(char *arguments[32])
 {
@@ -117,13 +106,13 @@ int  increment=0;
 			arguments[increment]=NULL;
 		}
 		++increment;
-		//printf("----------redirection--%s---\n",redirection);
+
 	}
 	return redirection;
 }
-//--------------------------------------------------
 
-int executeOR ( char *cmd1 ){
+
+int executeOR_AND ( char *cmd1 ){
 int pipefd[2];
 creation_liste_arguments(arg_list,cmd1);	
 
@@ -143,28 +132,7 @@ return retour ;
   wait(&process);
   }
 }
-//**********************************************/
-int executeAND ( char *cmd1 ){
-int pipefd[2];
-creation_liste_arguments(arg_list,cmd1);	
 
-pipe(pipefd);
-pid_t process=fork();
-if (process==0){
-
-int retour=execvp(arg_list[0],arg_list);
-if (retour==-1) { 
-//fprintf(stderr,"%s\n",strerror(errno));
-return retour;}
-exit(1);
-return retour ;
-}
-  else
-  {
-  wait(&process);
-  }
-}
-//----------------------------------------
 void executeAsync ( char *cmd1 ){
 
  int pipefd[2];
@@ -175,6 +143,7 @@ void executeAsync ( char *cmd1 ){
   
   if (process==0)
   {
+
    execvp(arg_list[0],arg_list) ;
    perror("invalid input");
    exit(1);
@@ -184,87 +153,79 @@ void executeAsync ( char *cmd1 ){
   wait(&process);
   }
 }
-//-----------------------------
-void executePipe ( char *cmd1 , char *cmd2 ){
 
- int pipefd[2];
- 
- creation_liste_arguments(arg_list,cmd1);
- 	
- if (cmd2!=NULL)
-	{
-		creation_liste_arguments(arg_list2,cmd2);	
-	}
-
-	pipe(pipefd);
-		//The pid_t data type is a signed integer type which is capable of representing a process ID
-	pid_t process=fork();
-	
-	// child process
-	if (process==0)
-	{
-		if (cmd2!=NULL) 
-		{
-		
-			dup2(pipefd[1],STDOUT_FILENO);
-		}
-		
-		int retour=execvp(arg_list[0],arg_list);
-		if (retour==-1) fprintf(stderr,"%s\n",strerror(errno));
-		exit(0);
-	}
-	else
-	{
-		wait(&process);
-	}
-	
-	
-	if (cmd2!=NULL)
-	{
-	//The pid_t data type is a signed integer type which is capable of representing a process ID
-		pid_t process2=fork();
-		if (process2==0)
-		{
-			dup2(pipefd[0],STDIN_FILENO);
-			int retour=execvp(arg_list2[0],arg_list2);
-			if (retour==-1) fprintf(stderr,"%s\n",strerror(errno));
-			exit(0);
-		}
-		else
-		{
-			wait(&process2);
-		}
-	}
-		
-	if (cmd2!=NULL)
-	{
-		liberation_arguments(arg_list2);
-		free(cmd2);
-		cmd2=NULL;
-	}
-	liberation_arguments(arg_list);
-	free(cmd1);
+ void executePipe ( char *cmd1 , char *cmd2 ){
+   creation_liste_arguments(arg_list,cmd1);
+ creation_liste_arguments(arg_list2,cmd2);
+  
+  int pipefd[2]; 
+    pid_t p1, p2;
+  
+    if (pipe(pipefd) < 0) {
+        printf("\nPipe could not be initialized");
+        return;
+    }
+    p1 = fork();
+    if (p1 < 0) {
+        printf("\nCould not fork");
+        return;
+    }
+  
+    if (p1 == 0) {
+      
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+  
+        if (execvp(arg_list[0],arg_list) < 0) {
+            printf("\nCould not execute command 1..");
+            exit(0);
+        }
+    } else {
+    
+        p2 = fork();
+  
+        if (p2 < 0) {
+            printf("\nCould not fork");
+            return;
+        }
+  
+      
+        if (p2 == 0) {
+            close(pipefd[1]);
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[0]);
+            if (execvp(arg_list2[0],arg_list2) < 0) {
+                printf("\nCould not execute command 2..");
+                exit(0);
+            }
+        } else {
+          
+            wait(NULL);
+            wait(NULL);
+        }
+    }
 }
-//---------------------------
+
 
 void executeRed ( char *cmd1 ){
 char *fichier_redirection_sortante;
  int pipefd[2];
- 
+
  creation_liste_arguments(arg_list,cmd1);
  fichier_redirection_sortante=scan_redirection_sortante(arg_list);	
  
 	pipe(pipefd);
-		//The pid_t data type is a signed integer type which is capable of representing a process ID
+
 	pid_t process=fork();
 	
-	// child process
+
 	if (process==0)
 	{
 		
 		if (fichier_redirection_sortante!=NULL)
 		{
-		
+
 			char* type_redirection=strndup(fichier_redirection_sortante,1);
 			int handler=(intptr_t)freopen(fichier_redirection_sortante+1,type_redirection, stdout);
 			if (handler==-1) 
@@ -274,7 +235,7 @@ char *fichier_redirection_sortante;
 			}
 			free(type_redirection);
 		}
-		// printf("---arg_list[0]  %s \n",*arg_list);
+
 		int retour=execvp(arg_list[0],arg_list);
 		if (retour==-1) fprintf(stderr,"%s\n",strerror(errno));
 		exit(0);
@@ -295,34 +256,34 @@ void traitement_cmd(char *commande,char **argv)
 char *cmd1,*cmd2;
 char *fichier_redirection_sortante;
 
-int pipefd[2];
+
 
 	cmd2=NULL;
 	
 	
 	str_replace(commande,"\n","");
-	//-------------------------------------
+	
 	str_replace(commande," >",">");
 	str_replace(commande,"> ",">");
 	str_replace(commande,">"," > ");
 	char *tmpr=strstr(commande," > ");
-	//-------------------------------------
+	
 	str_replace(commande,"| ","|");
 	str_replace(commande," |","|");
 	str_replace(commande,"|"," | ");
-	char *tmp=strstr(commande," | ");
-	//-------------------------------------
+	char *tmp=strstr(commande," | ");	
+	
 	str_replace(commande,"|| "," |  | ");
 	str_replace(commande," ||"," |  | ");
-	str_replace(commande,"||"," |  | ");
-	str_replace(commande," |  | "," || ");
-	char *tmp2=strstr(commande," || ");
-	//-------------------------------------
+	str_replace(commande,"||"," |  | ");	
+	str_replace(commande," |  | "," || ");	
+	char *tmp2=strstr(commande," || "); 	
+	
 	str_replace(commande,"&& ","&&");
 	str_replace(commande," &&","&&");
 	str_replace(commande,"&&"," && ");
 	char *tmp1=strstr(commande," && ");
-	//-------------------------------------
+	
 	str_replace(commande,"; ",";");
 	str_replace(commande," ;",";");
 	str_replace(commande,";"," ; ");
@@ -330,58 +291,103 @@ int pipefd[2];
 	
 	if (tmpp!=NULL) 
 	{
+		printf("cas ;\n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmpp));
 		cmd2=strdup(tmpp+3);
-		printf("---cmd2/%s \n",cmd2);
 		 executeAsync (cmd1)   ;
 	  	 executeAsync (cmd2)   ;
 		
 	}
-	// OR
+
 	if (tmp2!=NULL) {
 	tmp=NULL;
+		printf("cas || \n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp2));
 		cmd2=strdup(tmp2+4);
-		//printf("fi or---cmd2+%s \n",cmd2);
-		int a = executeOR (cmd1);
+		int a = executeOR_AND (cmd1);
 		if (a==-1) {
-		executeOR (cmd2 );
+		executeOR_AND (cmd2 );
 		}
 	
 	}
-	// AND
+	
 	if (tmp1!=NULL) {
+		printf("cas &&\n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp1));
 		cmd2=strdup(tmp1+4);
-		//printf("------------ \n");
-	 	int a = executeAND (cmd1 );
+	 	int a = executeOR_AND (cmd1 );
 		if (a!=-1) {
-		a= executeAND (cmd2 );
+		a= executeOR_AND (cmd2 );
 		}
 	}
-	// PIPE 
+	
 	if (tmp!=NULL) 
 	{
-	//printf("---fi Pipe    \n");
+	printf("cas |\n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp));
 		cmd2=strdup(tmp+3);
 		 executePipe (cmd1 ,cmd2 )   ;
 		
 	}
-	//  > 
+	
 	if (tmpr!=NULL) 
-	{
-	printf("Operation completed successfully !\n");
-		cmd1=strdup(commande);
-		executeRed (cmd1)   ;
-		
+	{ 
+	printf("cas > \n");
+	cmd1=strdup(commande);
+	executeRed (cmd1)   ;	
 	}
 	
-	// simple commande
 	if ( (tmpp==NULL) && (tmp2==NULL) && (tmp1==NULL) && (tmp==NULL) && (tmpr==NULL) ) 
+	{
+	if (strncmp(buffer,"cd",2)==0)
+	{		
+		char *chemin=strstr(buffer," ");
+		int longueur_chemin=strcspn(chemin+1," ");
+		char *dossier=strndup(chemin+1,longueur_chemin);
+		int retour=chdir(dossier);
+
+		if (retour!=0)
+		{
+			fprintf(stderr,"cd : %s",strerror(errno));
+		}
+
+		else
+		{
+			char *ancien_chemin=getenv("PWD");
+			char buffer_cwd[1024];
+			getcwd(buffer_cwd,4096);
+			setenv("PWD",buffer_cwd,1);
+			setenv("OLDPWD",ancien_chemin,1);
+		}
+	}
+	else if (strcmp(buffer,"quit")==0)
+	{
+		exit(EXIT_SUCCESS);
+	}	
+	else if (strcmp(buffer,"history")==0||strcmp(buffer,"history -c")==0)
+	{
+		if (strcmp(buffer,"history -c")==0)
+		{
+			clear_history();
+			write_history(".myshel_history");
+		}
+		else if (strcmp(buffer,"history")==0)
+		{
+			HIST_ENTRY *entree_historique;
+			int boucle;
+			for (boucle=1;boucle<history_length;++boucle)
+			{
+				entree_historique=history_get(boucle);
+				printf("%4d %s\n",boucle,entree_historique->line);
+			}
+		}
+	}
+	else
 	{
 		cmd1=strdup(commande);
 		executeAsync (cmd1 )   ;
+		}
+		
 		
 	}
 	
@@ -408,55 +414,9 @@ void traitement_espaces_fin(char *chaine_a_traiter)
 
 void traitement_ligne(char **argv)
 {
+
 	traitement_espaces_debut(buffer);
 	traitement_espaces_fin(buffer);
-	
-	
-	if (strncmp(buffer,"cd",2)==0)
-	{		
-		char *chemin=strstr(buffer," ");
-		int longueur_chemin=strcspn(chemin+1," ");
-		char *dossier=strndup(chemin+1,longueur_chemin);
-		int retour=chdir(dossier);
-		// if nom de directory 8alet affihi error
-		if (retour!=0)
-		{
-			fprintf(stderr,"cd : %s",strerror(errno));
-		}
-		// else na5dho pwd legdim w nzidoloo esm dossier
-		else
-		{
-			char *ancien_chemin=getenv("PWD");
-			char buffer_cwd[1024];
-			getcwd(buffer_cwd,4096);
-			setenv("PWD",buffer_cwd,1);
-			setenv("OLDPWD",ancien_chemin,1);
-		}
-	}
-	else if (strcmp(buffer,"exit")==0)
-	{
-		exit(EXIT_SUCCESS);
-	}	
-	else if (strcmp(buffer,"history")==0||strcmp(buffer,"history -c")==0)
-	{
-		if (strcmp(buffer,"history -c")==0)
-		{
-			clear_history();
-			write_history(".myshel_history");
-		}
-		else if (strcmp(buffer,"history")==0)
-		{
-			HIST_ENTRY *entree_historique;
-			int boucle;
-			for (boucle=1;boucle<history_length;++boucle)
-			{
-				entree_historique=history_get(boucle);
-				printf("%4d %s\n",boucle,entree_historique->line);
-			}
-		}
-	}
-	else
-	{
 	
 		char *cmd=strdup(buffer);
 		char *tmp=strtok(cmd,",");
@@ -466,7 +426,6 @@ void traitement_ligne(char **argv)
 			tmp=strtok(NULL,",");
 		}
 		free(cmd);
-	}
 }
 
 int touche_fleche_haute()
@@ -476,7 +435,7 @@ int touche_fleche_haute()
 	rl_end_of_line(0,0);
 	return 0;
 }
-// permier promt .
+
 char *lecture()
 {
 char *tmp=NULL;
@@ -494,7 +453,7 @@ char *lu=NULL;
 		char dossier_en_cours[4096];
 		dossier_en_cours[0]='\0';
 		strcat(dossier_en_cours,getenv("PWD"));
-		strcat(dossier_en_cours,"% ");
+		strcat(dossier_en_cours," % ");
 		tmp=readline(dossier_en_cours);
 	}
 	return tmp;
@@ -509,7 +468,7 @@ void welcomeScreen(){
         printf("\n\n");
 }
 
-int main(int argc,char *argv[],char *arge[])
+int main(int argc,char *argv[])
 {
 	global_argc=argc;
 	
@@ -520,14 +479,18 @@ int main(int argc,char *argv[],char *arge[])
 	read_history(".myshel_history");
 	stifle_history(500);
 	write_history(".myshel_history");
+	
+	
 	welcomeScreen();
+	
+	
 	int increment=0;
 	
 	
 	rl_bind_keyseq("\e[A",touche_fleche_haute);
 	
 	
-	// partie batsh --> si nom de fichier invalide -> affichage de message d erreur
+	
 	if (argc>1)
 	{
 		fichier=fopen(argv[1],"r");
@@ -537,19 +500,18 @@ int main(int argc,char *argv[],char *arge[])
 			exit(EXIT_FAILURE);
 		}
 	}
-	// STDIN ->It's an I/O stream, basically an operating-system level abstraction that allows data to be read 
-//	(or written, in the case off stdout).
+
 	else fichier=stdin;
 
 	while(1)
 	{
-	// lecture premiere promt
+
 		char *ligne_saisie=lecture();
 		if (ligne_saisie!=NULL)
 		{
 			strcpy(buffer,ligne_saisie);
 			free(ligne_saisie);
-			// The isatty() function tests whether  fildes,  an  open  file descriptor, is associated with a terminal device
+
 			if (isatty(fileno(fichier))) 
 			{
 				add_history(buffer);
