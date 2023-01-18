@@ -291,7 +291,7 @@ char *fichier_redirection_sortante;
 	
 	if (tmpp!=NULL) 
 	{
-		printf("cas ;\n");
+		//printf("cas ;\n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmpp));
 		cmd2=strdup(tmpp+3);
 		 executeAsync (cmd1)   ;
@@ -301,7 +301,7 @@ char *fichier_redirection_sortante;
 
 	if (tmp2!=NULL) {
 	tmp=NULL;
-		printf("cas || \n");
+		//printf("cas || \n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp2));
 		cmd2=strdup(tmp2+4);
 		int a = executeOR_AND (cmd1);
@@ -312,7 +312,7 @@ char *fichier_redirection_sortante;
 	}
 	
 	if (tmp1!=NULL) {
-		printf("cas &&\n");
+		//printf("cas &&\n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp1));
 		cmd2=strdup(tmp1+4);
 	 	int a = executeOR_AND (cmd1 );
@@ -323,7 +323,7 @@ char *fichier_redirection_sortante;
 	
 	if (tmp!=NULL) 
 	{
-	printf("cas |\n");
+	//printf("cas |\n");
 		cmd1=strndup(commande,strlen(commande)-strlen(tmp));
 		cmd2=strdup(tmp+3);
 		 executePipe (cmd1 ,cmd2 )   ;
@@ -332,7 +332,7 @@ char *fichier_redirection_sortante;
 	
 	if (tmpr!=NULL) 
 	{ 
-	printf("cas > \n");
+	//printf("cas > \n");
 	cmd1=strdup(commande);
 	executeRed (cmd1)   ;	
 	}
@@ -453,18 +453,18 @@ char *lu=NULL;
 		char dossier_en_cours[4096];
 		dossier_en_cours[0]='\0';
 		strcat(dossier_en_cours,getenv("PWD"));
-		strcat(dossier_en_cours," % ");
+		strcat(dossier_en_cours,"\033[0;35m % \033[0m");
 		tmp=readline(dossier_en_cours);
 	}
 	return tmp;
 }
 
 void welcomeScreen(){
-        printf("\n\t============================================\n");
-        printf("\t               Project C Shell\n");
-        printf("\t--------------------------------------------\n");
-        printf("\t                   1ING-Grp2\n");
-        printf("\t============================================\n");
+        printf("\n\t\033[0;35m============================================\033[0m\n");
+        printf("\t \033[0;36m              Project C Shell\033[0m\n");
+        printf("\t\033[0;35m--------------------------------------------\033[0m\n");
+        printf("\t \033[0;36m                 1ING-Grp2\033[0m\n");
+        printf("\t\033[0;35m============================================\033[0m\n");
         printf("\n\n");
 }
 
