@@ -3,8 +3,10 @@ install :
 compile :
 		gcc code.c -o code -lreadline
 execute :
-		./code
+		./code $(file)
 delete :
 		rm code
-bash :
-		./code bash
+userP :
+		chmod u+rwx $(file)
+allP :
+		chmod 777 $(file)
